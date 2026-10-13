@@ -1,0 +1,11 @@
+---
+title: SWERIK stack-package example
+format:
+  html:
+    embed-resources: false
+    toc: true
+    toc-depth: 3
+---
+
+Content!
+
