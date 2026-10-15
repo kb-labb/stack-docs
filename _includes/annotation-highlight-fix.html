@@ -1,0 +1,24 @@
+<script>
+// Workaround: Quarto draws the code annotation line highlight one row above the
+// selected line for JSON snippets, while the gutter highlight lands on the right row. Whenever
+// Quarto (re)draws the two (on click and on resize), move the line highlight
+// to the gutter highlight's height.
+document.addEventListener("DOMContentLoaded", () => {
+  const align = () => {
+    const line = document.getElementById("code-annotation-line-highlight");
+    const gutter = document.getElementById("code-annotation-line-highlight-gutter");
+    if (!line || !gutter) return;
+    const delta = gutter.getBoundingClientRect().top - line.getBoundingClientRect().top;
+    // Our own style change triggers the observer again; delta is 0 by then.
+    if (Math.abs(delta) > 0.5) {
+      line.style.top = parseFloat(line.style.top) + delta + "px";
+    }
+  };
+  new MutationObserver(align).observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["style"],
+  });
+});
+</script>

@@ -1,1 +1,10 @@
 /* css styles */
+
+/* Push a margin note down by two lines of code (0.875em font x 1.5 line height).
+   Only when the margin column is shown; on narrow screens the note sits inline. */
+@media (min-width: 992px) {
+  .column-margin .shift-down-2 {
+    position: relative;
+    top: calc(2 * 0.875rem * 1.5);
+  }
+}

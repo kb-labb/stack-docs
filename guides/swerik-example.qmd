@@ -7,5 +7,389 @@ format:
     toc-depth: 3
 ---
 
-Content!
+This guide provides a template for working with KB-SB-Stack's [`stack`-package](https://github.com/kb-labb/kb_sb_stack/tree/main/src/stack).
 
+This is a suggested workflow, with certain steps being mandatory. 
+
+We will use SWERIK as an example.
+
+:::{.callout-note title="Glossary"}
+(pipeline) **stage** -- Processing that may consist of several chained datatrove pipeline steps.  
+
+(pipeline) **step** -- A single pipeline step defined in e.g. `LocalPipelineExecutor()` or `SlurmPipelineExecutor()`
+:::
+
+## uv-setup and pyproject.toml
+
+Users of `uv` can begin by setting up a `pyproject.toml` file that installs the `stack`-package in editable mode. Here's our example for a `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["setuptools>=67.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+version = "0.0.1"
+name = "swerik" # <1>
+requires-python = ">=3.12"
+
+dependencies = [
+    "datatrove[io]>=0.9",
+    "pyarrow",
+    "stack[datatrove]",
+    "tqdm",
+    "pyriksdagen",
+]
+
+[tool.uv.sources]
+stack = { path = "../..", editable = true } # <2>
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+```
+
+1. Substitute for the name of your own project/subcorpus.
+2. Include this to install the `stack`-package in editable mode. 
+
+::: {.callout-note title="Current state of the repository"}
+[State after uv-setup and pyproject.toml](https://github.com/kb-labb/kb_sb_stack/tree/b464781e0a37ec12bb63138561ce142768794ab9/oppna_data/swerik)
+
+[Diffs](https://github.com/kb-labb/kb_sb_stack/commit/b464781e0a37ec12bb63138561ce142768794ab9)
+:::
+
+
+## Download data and create file list
+
+A first step of the creation of most subcorpora will include either downloading data, or creating references to URIs that uniquely identifies the data source. 
+
+Certain metadata fields are required in the `stack`'s [central schema](#central-schema). Keep in mind that they, for some data sources, might need to be saved during the download process. 
+
+### Download data
+
+For SWERIK, we begin with downloading the latest version of parliamentary records^[[records_v1.5.0](https://github.com/swerik-project/the-swedish-parliament-corpus/releases/tag/v2025.12.19) containing protocols from speeches in the Swedish Riksdag.] and unzipping them.
+
+```bash
+wget -P data/ https://github.com/swerik-project/the-swedish-parliament-corpus/releases/download/v2025.12.19/records_v1.5.0.zip
+mkdir -p data/swerik/records
+unzip data/records_v1.5.0.zip -d data/swerik/records/
+```
+
+### Create file list
+
+When working with datatrove, (förväntar sig fillista)
+
+```python
+from pathlib import Path
+
+protocols = Path.glob(Path("data/swerik/records/data"), pattern="*/**/*.xml") # <1>
+
+with open("data/swerik-records-150-filenames.txt", "a") as f:
+    for filepath in protocols:
+        f.write(str(filepath.relative_to("data")) + "\n") # <2>
+```
+
+1. List all xml-files in subdirectories of `data/swerik/records/data/.../*`^[These contain the text and metadata from parliamentary debates]. 
+2. The resulting files uploaded to the KB-SB-Stack can be stored on different storage media in the future. When creating filepaths, only include the relative filepath necessary to identify a file. Do not include parts of the filepath that are specific to your local environment^[Example: `swerik/records/data/1938/prot-1938--fk--025.xml` rather than `/home/fatrek/projects/text/kb_sb_stack/oppna_data/swerik/data/swerik/records/data/1938/prot-1938--fk--025.xml`].
+
+
+::: {.callout-note title="Current state of the repository"}
+[State after data download and file list creation](https://github.com/kb-labb/kb_sb_stack/tree/8b8e2d6857c71d8caa7c801655e00d219a1fe75b/oppna_data/swerik)
+
+[Diffs](https://github.com/kb-labb/kb_sb_stack/commit/8b8e2d6857c71d8caa7c801655e00d219a1fe75b)
+:::
+
+## Pipeline stage 1: Create references
+
+The creation of reference files that list all documents to be processed in the subcorpus is the first stage of the reproducible part of the pipeline.
+
+There are mandatory fields one must include when creating these reference files. These fields are defined in the `stack` package's [central schema](https://github.com/kb-labb/kb_sb_stack/blob/0c01067826f6252e5b40e7b31ffde57542c5d541/src/stack/datamodel/schema.py#L21-L65). 
+
+### Central schema {#central-schema}
+
+An overview of the centrally defined columns and fields can be found below. 
+
+::::{.column-margin}
+:::{.callout-note .shift-down-2}
+There are helper functions in the `stack`-package to help create the fields under `processing_details`. An explanation on how to incorporate these functions can be found in the [provenance](#provenance) and [reference runner](#reference-runner) sections below.
+:::
+::::
+
+```json
+{
+  "id": "3c2d9733-f0cd-48ab-b343-1ad60484d4e8", // <1>
+  "external_id": "prot-197879--163", // <2>
+  "MD5": "5c8c95f823ebabf831d225d461fc85cf", // <3>
+  "metadata": {
+    "filepath": "swerik/records/data/197879/prot-197879--163.xml", // <4>
+    "source_uri": "https://swerik-project.github.io/riksdagen-records-pdf/197879/prot-197879--163", // <5>
+    "date_created": "1979-05-31", // <6>
+    "processing_details": [ // <7>
+      {
+        "description": "Reference manifest: one row per SWERIK protocol file.",
+        "git_details": {
+          "commitid": "157d41aadab7d5dd37183a96b2ebff5ce3e848d1",
+          "timestamp": "2026-10-13T12:37:27.536595+00:00", // <8>
+          "testmode": true // <9>
+        },
+        "settings": "{}", // <10>
+        "filepath_script": "oppna_data/swerik/scripts/run_reference.py" // <11>
+      }
+    ]
+  }
+}
+```
+
+1. **Required.** Unique id of the source file (a UUID4). Every record written by a later stage copies this id into its `ref_id`.
+2. The source's own id for the document. For SWERIK, this is the file name without `.xml`, which is also the protocol's `xml:id`.
+3. MD5 checksum of the source file. It is computed before parsing, so files that fail to parse still get one.
+4. **Required.** Path relative to the corpus root directory.
+5. URI of the original source, in this case the scanned PDF that the XML was made from.
+6. When the original document was created^[The field requires the full date, including year, month and day. If you only have access to the document creation date in a lower granularity (e.g. only the year), set it to January 1st of that given year. ]. A debate can run over several days. We use the first of the listed dates.
+7. **Required.** One entry per pipeline stage the record has passed through, oldest first.
+8. ISO-8601 UTC time the stage ran.
+9. Must be set to `true` for the stage to run with uncommitted changes or outside `main` (`--testmode`). Versioned datasets must have `false`.
+10. **Required.** The relevant settings of this stage only, as a JSON-encoded string.
+11. **Required.** The script that launched the stage, relative to the repository root.
+
+### Create local schema for metadata
+
+Your dataset may contain information that needs to be saved for downstream processing, or provenance. 
+
+To save local data columns that are not defined in the central schema, one **needs** to define a local parquet schema. 
+
+For SWERIK, we include information such as the chamber, session, dates, and license. An example how to define a local schema, and combine it with the central schema, can be found in the code snippet below. 
+
+```python
+import pyarrow as pa
+from stack.datamodel import schema as central
+
+# File level metadata of one protocol. Files that failed to parse are included
+# in the reference: for those rows every field taken from the XML is null, and
+# `read_error` is the only one that tells them apart.
+_SWERIK_REFERENCE = pa.struct(
+    [
+        ("read_error", pa.string()),
+        ("chamber", pa.string()),  # `ak`, `fk`, or `ek` for the unicameral Riksdag
+        ("session", pa.string()),  # `1950`, or a split year such as `199091`
+        ("dates", pa.list_(pa.string())),  # Sitting dates, ISO-8601
+        ("class_code", pa.string()),  # `OCR` or `digital-origin`
+        ("authority", pa.string()),
+        ("licence", pa.string()),
+    ]
+)
+
+
+def _with_swerik(schema: pa.Schema, swerik: pa.StructType) -> pa.Schema:
+    return central.extend_schema(schema, pa.schema([("swerik", swerik)])) # <1>
+
+
+REFERENCE_SCHEMA = _with_swerik(central.REFERENCE_SCHEMA, _SWERIK_REFERENCE)
+```
+
+1. Use `central.extend_schema` to combine the central schema with your local schema. 
+
+### Create XML-reader for datatrove {#xml-reader}
+
+Datatrove has native readers for parquet and JSON. It unfortunately does not include an XML-reader. We therefore need to create our own XML-reader as part of the pipeline. 
+
+Reading a file is a natural place to create an MD5 hash. The creation of a hash is therefore included in our reader. Note, however, that an MD5 hash is not a required field -- it can also be created at a later date. 
+
+The reader and parsing implementation spans over a hundred lines. You can view the current state of our reader [here](https://github.com/kb-labb/kb_sb_stack/blob/d9537d5107a5d1fb52d09f21673778885a8ae25a/oppna_data/swerik/src/swerik/pipeline/referencer.py#L95-L176). 
+
+Our reader will need to be updated and amended for future stages of the pipeline. For now the reader only parses fields that are necessary to create the reference file list. 
+
+### Provenance {#provenance}
+
+Provenance details need to be added to the output. The provenance includes details about the commit hash, timestamp, the relevant settings for the stage, and which script was run to launch the stage. See the example in the [central schema](#central-schema) section. 
+
+We have implemented a `ProcessingDetailsStamper` datatrove pipeline step that adds this information to each document. This will likely become a part of the `stack` package (and imported from there). For now, we implement it ourselves. 
+
+:::{.callout-note title="Where do the processing details come from?"}
+The processing details themselves are [retrieved]{style="color: red;"} when running the reference script, with helper functions from the `stack` package. See the [reference runner](#run-reference) section. 
+:::
+
+### Output adapter
+
+Datatrove's native writers expect only the columns `id`, `text` and `metadata` to be present at the top level. 
+
+KB-SB-Stack's schema breaks this expectation. Thus we need to define an output adapter. 
+
+::::{.column-margin}
+:::{.callout-note}
+The `stack` package has its own `StackParquetWriter` that takes in this adapter as an argument. Its usage and application will be described in the [executor](#executor) section. 
+:::
+::::
+
+Each pipeline stage will need to define an output adapter. The reference stage's adapter can be found below. 
+
+```python
+PROCESSING_DETAILS_KEY = "reference_processing_details"
+
+def reference_record_adapter(self, document: Document) -> dict:
+    """Writer adapter emitting one record matching `REFERENCE_SCHEMA`.
+
+    datatrove binds adapters as methods of the writer, hence the leading and
+    unused `self`.
+
+    Note:
+        Every field taken from the XML is null for a file that failed to parse.
+        `MD5` is taken before parsing, so it is null only when the read itself
+        failed.
+
+    Args:
+        document (Document): Document to write.
+
+    Returns:
+        dict: A manifest record for one corpus file.
+    """
+    header = document.metadata["header"] or {}
+    dates = header.get("dates")
+    return {
+        "id": document.id,
+        # The file name without `.xml`, e.g. `prot-1950--fk--030`, which is
+        # also the protocol's `xml:id`. Taken from the path, so it is set even
+        # for a file that failed to parse.
+        "external_id": Path(document.metadata["file_path"]).stem,
+        "MD5": document.metadata["md5"],
+        "metadata": {
+            "filepath": document.metadata["file_path"],
+            # The scanned (or digital) original the XML was made from.
+            "source_uri": header.get("pdf_url"),
+            # A debate can run over several days; the first sitting date is
+            # when the protocol was created.
+            "date_created": date.fromisoformat(dates[0]) if dates else None,
+            "processing_details": document.metadata[PROCESSING_DETAILS_KEY],
+        },
+        "swerik": {
+            "read_error": document.metadata["read_error"],
+            "chamber": document.metadata["chamber"],
+            "session": document.metadata["session"],
+            "dates": dates,
+            "class_code": header.get("class_code"),
+            "authority": header.get("authority"),
+            "licence": header.get("licence"),
+        },
+    }
+```
+
+
+### Executor {#executor}
+
+We suggest creating an `executor.py` file that contains all the pipeline stages (reference, extraction, processing) to be executed. An executor is imported by its corresponding `run_*.py` script, described in the [reference runner](#reference-runner) section below. 
+
+Here's the `build_reference_executor()` that defines all steps to be executed for creating reference output files. 
+
+```python
+from datatrove.executor.local import LocalPipelineExecutor
+from stack.datamodel import schema as central
+from stack.writers import StackParquetWriter
+
+from swerik.datamodel.schema import REFERENCE_SCHEMA
+from swerik.pipeline.referencer import (
+    PROCESSING_DETAILS_KEY as REFERENCE_DETAILS_KEY,
+)
+from swerik.pipeline.referencer import SwerikReferenceReader, reference_record_adapter
+from swerik.pipeline.stamper import ProcessingDetailsStamper
+
+
+# Stage 1: One reference row per protocol file
+def build_reference_executor(
+    corpus_root: DataFolderLike,
+    output_dir: DataFolderLike,
+    git_details: GitDetails,
+    filepath_script: str,
+    description: str | None = None,
+    settings: dict | None = None,
+    logging_dir: str = "logs/reference",
+    paths_file: DataFileLike | None = None,
+    tasks: int = 64,
+    workers: int = -1,
+    limit: int = -1,
+    skip_completed: bool = True,
+) -> LocalPipelineExecutor:
+    """Build the reference executor: protocol XML files -> reference manifest.
+
+    ... (see linked code for docstring)
+
+    Returns:
+        LocalPipelineExecutor: The configured, not yet started, executor.
+    """
+    pipeline = [
+        SwerikReferenceReader(corpus_root, paths_file=paths_file, limit=limit), # <1>
+        ProcessingDetailsStamper(  # <2>
+            git_details,
+            filepath_script,
+            description=description,
+            settings=settings,
+            key=REFERENCE_DETAILS_KEY,
+        ),
+        StackParquetWriter( # <3>
+            output_folder=output_dir,
+            output_filename="${rank}.parquet",
+            adapter=reference_record_adapter,
+            max_file_size=3 * 2**30,  # 3 GB
+            schema=REFERENCE_SCHEMA,  # The unified schema
+            central_schema=central.REFERENCE_SCHEMA,  # The central schema
+        ),
+    ]
+
+    return LocalPipelineExecutor(
+        pipeline=pipeline,
+        tasks=tasks,
+        workers=workers,
+        logging_dir=logging_dir,
+        skip_completed=skip_completed,
+    )
+```
+
+1. The XML-reader we created to extract metadata from the documents. See [XML-reader section](#xml-reader)
+2. Add the git and processing details as a datatrove pipeline step. 
+3. Custom `StackParquetWriter` imported from the `stack`-package.
+
+### Reference runner {#run-reference}
+
+
+## Pipeline stage 2: Extract text
+
+#### Extracted record
+
+
+###
+
+```json
+{
+  "ref_id": ["3c2d9733-f0cd-48ab-b343-1ad60484d4e8"], // <1>
+  "step_id": "8a41f0c2-6b9e-4d3a-a7f5-2e1c9b0d4f86", // <2>
+  "previous_step_id": [], // <3>
+  "metadata": { // <4>
+    "filepath": "swerik/records/data/197879/prot-197879--163.xml",
+    "source_uri": "https://swerik-project.github.io/riksdagen-records-pdf/197879/prot-197879--163",
+    "date_created": "1979-05-31",
+    "processing_details": [
+      {
+        "description": "Extract the text of each SWERIK protocol.",
+        "git_details": {
+          "commitid": "157d41aadab7d5dd37183a96b2ebff5ce3e848d1",
+          "timestamp": "2026-10-13T13:02:11.204718+00:00",
+          "testmode": true
+        },
+        "settings": "{}",
+        "filepath_script": "oppna_data/swerik/scripts/run_extractor.py"
+      }
+    ]
+  },
+  "text": "Herr talman! ...", // <5>
+  "tags": null, // <6>
+  "scores": null // <6>
+}
+```
+
+1. **Required.** The `id` of every reference record this document derives from. It is a list so that a step combining several documents can name all of them.
+2. **Required.** Unique id of this record.
+3. **Required.** The `step_id`s of the records this one was derived from. It is always empty after extraction, because the reference stage has no `step_id`. Records from later processing stages fill it in.
+4. **Required.** Same fields as in the reference record. Each stage appends its own entry to `processing_details`.
+5. The document text.
+6. Optional JSON-encoded strings, for tags and quality scores added by later stages.

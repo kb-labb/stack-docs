@@ -22,6 +22,7 @@ format:
       - brand
     css: styles.css
     toc: true
+    include-after-body: _includes/annotation-highlight-fix.html
 
 
 
