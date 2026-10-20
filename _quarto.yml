@@ -18,11 +18,13 @@ website:
 format:
   html:
     theme:
-      - cosmo
-      - brand
+      light: [cosmo, brand]
+      dark: [darkly, brand]
     css: styles.css
     toc: true
-    include-after-body: _includes/annotation-highlight-fix.html
+    include-after-body:
+      - _includes/annotation-highlight-fix.html
+      - _includes/annotation-click-highlight.html
 
 
 

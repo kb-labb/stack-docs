@@ -1,0 +1,51 @@
+---
+title: SWERIK extraction
+code-annotations: hover
+format:
+  html:
+    embed-resources: false
+    toc: true
+    toc-depth: 3
+---
+
+## Pipeline stage 2: Extract text
+
+### Extracted record
+
+
+###
+
+```json
+{
+  "ref_id": ["3c2d9733-f0cd-48ab-b343-1ad60484d4e8"], // <1>
+  "step_id": "8a41f0c2-6b9e-4d3a-a7f5-2e1c9b0d4f86", // <2>
+  "previous_step_id": [], // <3>
+  "metadata": { // <4>
+    "filepath": "swerik/records/data/197879/prot-197879--163.xml",
+    "source_uri": "https://swerik-project.github.io/riksdagen-records-pdf/197879/prot-197879--163",
+    "date_created": "1979-05-31",
+    "processing_details": [
+      {
+        "description": "Extract the text of each SWERIK protocol.",
+        "git_details": {
+          "commitid": "157d41aadab7d5dd37183a96b2ebff5ce3e848d1",
+          "timestamp": "2026-10-13T13:02:11.204718+00:00",
+          "testmode": true
+        },
+        "settings": "{}",
+        "filepath_script": "oppna_data/swerik/scripts/run_extractor.py"
+      }
+    ]
+  },
+  "text": "Herr talman! ...", // <5>
+  "tags": null, // <6>
+  "scores": null // <6>
+}
+```
+
+1. **Required.** The `id` of every reference record this document derives from. It is a list so that a step combining several documents can name all of them.
+2. **Required.** Unique id of this record.
+3. **Required.** The `step_id`s of the records this one was derived from. It is always empty after extraction, because the reference stage has no `step_id`. Records from later processing stages fill it in.
+4. **Required.** Same fields as in the reference record. Each stage appends its own entry to `processing_details`.
+5. The document text.
+6. Optional JSON-encoded strings, for tags and quality scores added by later stages.

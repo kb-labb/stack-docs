@@ -1,0 +1,71 @@
+<script>
+// On pages with `code-annotations: hover`, Quarto only highlights code lines
+// while a tooltip is open. Blocks marked `.annotations-below` show their list
+// (see styles.css), so make clicking a number in that list highlight its lines,
+// like the default `below` mode does. The highlight uses Quarto's own element
+// ids, so it gets Quarto's styling and annotation-highlight-fix.html aligns it.
+document.addEventListener("DOMContentLoaded", () => {
+  const LINE_ID = "code-annotation-line-highlight";
+  const GUTTER_ID = "code-annotation-line-highlight-gutter";
+  let selected = null;
+
+  const unselect = () => {
+    [LINE_ID, GUTTER_ID].forEach((id) => document.getElementById(id)?.remove());
+    selected?.classList.remove("code-annotation-active");
+    selected = null;
+  };
+
+  const highlightBox = (id, parent, top, height) => {
+    const div = document.createElement("div");
+    div.id = id;
+    div.style.position = "absolute";
+    div.style.top = top - 2 + "px";
+    div.style.height = height + 4 + "px";
+    parent.appendChild(div);
+    return div;
+  };
+
+  const select = (dt) => {
+    const cell = dt.dataset.targetCell;
+    const annotation = dt.dataset.targetAnnotation;
+    const span = document.querySelector(
+      `span[data-code-cell="${cell}"][data-code-annotation="${annotation}"]`
+    );
+    if (!span) return;
+    const lines = span.dataset.codeLines.split(",");
+    const first = document.getElementById(`${cell}-${lines[0]}`);
+    const last = document.getElementById(`${cell}-${lines[lines.length - 1]}`);
+    const gutter = document.getElementById(cell)?.querySelector(".code-annotation-gutter");
+    if (!first || !last || !gutter) return;
+
+    const top = first.offsetTop;
+    const height = last.offsetTop + last.offsetHeight - top;
+    highlightBox(LINE_ID, first.parentElement.parentElement, top, height).style.left = 0;
+    highlightBox(GUTTER_ID, gutter, top, height);
+    dt.classList.add("code-annotation-active");
+    selected = dt;
+  };
+
+  // Only lists Quarto has hidden, i.e. hover mode: in `below` mode Quarto
+  // handles clicks itself.
+  const dts = document.querySelectorAll(
+    "dl.code-annotation-container-hidden dt[data-target-cell]"
+  );
+  for (const dt of dts) {
+    dt.style.cursor = "pointer";
+    dt.addEventListener("click", () => {
+      const wasSelected = dt === selected;
+      unselect();
+      if (!wasSelected) select(dt);
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    if (selected) {
+      const dt = selected;
+      unselect();
+      select(dt);
+    }
+  });
+});
+</script>

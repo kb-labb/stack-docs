@@ -1,10 +1,44 @@
 /* css styles */
 
-/* Push a margin note down by two lines of code (0.875em font x 1.5 line height).
-   Only when the margin column is shown; on narrow screens the note sits inline. */
+/* Push a margin note down by --lines lines of code (0.875em font x 1.5 line
+   height), e.g. :::{.callout-note .shift-down style="--lines: 3;"}. Fractions
+   such as 2.5 work. Only when the margin column is shown; on narrow screens
+   the note sits inline. */
 @media (min-width: 992px) {
-  .column-margin .shift-down-2 {
+  .column-margin .shift-down {
     position: relative;
-    top: calc(2 * 0.875rem * 1.5);
+    top: calc(var(--lines, 2) * 0.875rem * 1.5);
   }
+}
+
+/* Show the annotation list for blocks marked .annotations-below,
+   on pages that use code-annotations: hover. */
+div.code-copy-outer-scaffold:has(pre.annotations-below) + dl.code-annotation-container-hidden {
+  display: grid !important;
+}
+
+/* ```text blocks are not highlighted, so Pandoc leaves out the div.sourceCode
+   wrapper that gives other code blocks their background. Style them in a
+   light sepia, matching the shape of the other code blocks. */
+pre.text {
+  background-color: #f6f1e7;
+  border: 1px solid #e8dfcc;
+  border-radius: 0.375rem;
+  padding: 0.4em;
+}
+
+/* Inline code in callouts and code annotations (the list below a block, and
+   the hover tooltips) comes out white on white in dark mode. Set both colors
+   explicitly: light text on a translucent light background. */
+body.quarto-dark .callout code:not(.sourceCode),
+body.quarto-dark dl.code-annotation-container-grid code,
+body.quarto-dark .code-annotation-tip-content code {
+  color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* The same sepia tone in dark mode. */
+body.quarto-dark pre.text {
+  background-color: #2b2620;
+  border-color: #3d352b;
 }
