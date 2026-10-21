@@ -9,11 +9,18 @@ website:
       - href: index.qmd
         text: Home
       - about.qmd
+    right:
+      - icon: github
+        href: https://github.com/kb-labb/stack-docs
+        aria-label: GitHub
   sidebar:
     contents:
       - index.qmd
       - section: "Guides"
         contents: guides/*
+  repo-url: https://github.com/kb-labb/stack-docs
+  repo-branch: main
+  repo-actions: [source, issue]
 
 format:
   html:

@@ -565,7 +565,7 @@ There are two ways to validate the resulting parquet file outputs. The purpose o
 
 When using datatrove and `StackParquetWriter`, the output is validated automatically during writes to disk. Data that breaks assumptions in the central and local schemas will cause your scripts to crash when pipelines attempts to write parquet files. 
 
-The `stack` package also contains a module that can be used to validate parquet files that have already been written to disk. This module does not depend on datatrove. Use it to validate parquet files written to disk by other tools. 
+The `stack` package also contains a module that can be used to validate parquet files that have been written to disk. This module does not depend on datatrove. Use it to validate parquet files written to disk by other tools. 
 
 ```bash
 uv run python -m stack.validation "data/reference-0.1.0/data" --schema swerik.datamodel.schema:UNIFIED_REFERENCE_SCHEMA
@@ -573,9 +573,9 @@ uv run python -m stack.validation "data/reference-0.1.0/data" --schema swerik.da
 
 Point to the directory containing the parquet files to be validated: in our case `"data/reference-0.1.0/data"`.  
 
-Use the `--schema` argument to specify the schema to be used to validate your parquet files. 
+Use the `--schema` argument to specify the curren't stages unified schema to validate your parquet files. If you've organized your source code according to our suggestions, this argument can be supplied as `{my package name}.datamodel.schema:{unified schema variable name}`. The central schema can also be supplied as an argument if no local schema was needed for the processing of your subcorpus: `stack.datamodel.schema:{schema variable name}`. 
 
 
-::: {.callout-note title="Final state of the SWERIK example repo"}
-[State after output adapter, executor, and run script](https://github.com/kb-labb/kb_sb_stack/tree/8ffdcc838bac1c5935304dae3c87d31de78cfc6c/oppna_data/swerik)
+::: {.callout-note title="Final state of the SWERIK example repo after reference stage completion"}
+[Final state after reference stage has been created.](https://github.com/kb-labb/kb_sb_stack/tree/8ffdcc838bac1c5935304dae3c87d31de78cfc6c/oppna_data/swerik)
 :::

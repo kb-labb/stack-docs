@@ -2,6 +2,8 @@
 title: "KB-SB-Stack documentation"
 ---
 
-This is a Quarto website.
+## Guides
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+[SWERIK reference pipeline stage guide](guides/01_swerik-reference.qmd).
+
+[SWERIK extraction pipeline stage guide](guides/02_swerik-extraction.qmd)
